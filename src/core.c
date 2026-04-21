@@ -455,6 +455,9 @@ static void addLibPaths(box64context_t* context)
     if(BOX64ENV(nosigill)) {
         context->no_sigill = 1;
     }
+    if(BOX64ENV(nosigquit)) {
+        context->no_sigquit = 1;
+    }
     if(BOX64ENV(addlibs)) {
         AddNewLibs(BOX64ENV(addlibs));
     }

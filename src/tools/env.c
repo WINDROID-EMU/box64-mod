@@ -380,12 +380,8 @@ static void pushNewEntry(const char* name, box64env_t* env, int wildcard)
 }
 
 #ifdef ANDROID
-static int shm_open(const char *name, int oflag, mode_t mode) {
-    return -1;
-}
-static int shm_unlink(const char *name) {
-    return -1;
-}
+// shm_open and shm_unlink are provided by Android headers
+#include <sys/mman.h>
 #endif
 
 static void initializeEnvFile(const char* filename, int priority)

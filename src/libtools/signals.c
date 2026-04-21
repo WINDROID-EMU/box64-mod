@@ -1285,7 +1285,7 @@ void my_sigactionhandler(int32_t sig, siginfo_t* info, void * ucntx)
     }
     my_sigactionhandler_oldcode(emu, sig, 0, info, ucntx, NULL, db, x64pc);
 }
-#define MY_SIGHANDLER ((signum==X64_SIGSEGV || signum==X64_SIGBUS || signum==X64_SIGILL || signum==X64_SIGABRT)?my_box64signalhandler:my_sigactionhandler)
+#define MY_SIGHANDLER ((signum==X64_SIGSEGV || signum==X64_SIGBUS || signum==X64_SIGILL || signum==X64_SIGABRT || signum==X64_SIGQUIT)?my_box64signalhandler:my_sigactionhandler)
 EXPORT sighandler_t my_signal(x64emu_t* emu, int signum, sighandler_t handler)
 {
     if(signum<0 || signum>MAX_SIGNAL)
@@ -1294,13 +1294,16 @@ EXPORT sighandler_t my_signal(x64emu_t* emu, int signum, sighandler_t handler)
     if(signum==X64_SIGSEGV && emu->context->no_sigsegv)
         return 0;
 
+    if(signum==X64_SIGQUIT && emu->context->no_sigquit)
+        return 0;
+
     // create a new handler
     my_context->signals[signum] = (uintptr_t)handler;
     my_context->is_sigaction[signum] = 0;
     my_context->restorer[signum] = 0;
     my_context->onstack[signum] = 0;
 
-    if(signum==X64_SIGSEGV || signum==X64_SIGBUS || signum==X64_SIGILL || signum==X64_SIGABRT)
+    if(signum==X64_SIGSEGV || signum==X64_SIGBUS || signum==X64_SIGILL || signum==X64_SIGABRT || signum==X64_SIGQUIT)
         return 0;
 
     if(handler!=NULL && handler!=(sighandler_t)1) {
@@ -1329,6 +1332,9 @@ int EXPORT my_sigaction(x64emu_t* emu, int signum, const x64_sigaction_t *act, x
 
     if(signum==X64_SIGILL && emu->context->no_sigill)
         return 0;
+
+    if(signum==X64_SIGQUIT && emu->context->no_sigquit)
+        return 0;
     struct sigaction newact = {0};
     struct sigaction old = {0};
     uintptr_t old_handler = my_context->signals[signum];
@@ -1355,7 +1361,7 @@ int EXPORT my_sigaction(x64emu_t* emu, int signum, const x64_sigaction_t *act, x
         my_context->onstack[signum] = (act->sa_flags&SA_ONSTACK)?1:0;
     }
     int ret = 0;
-    if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT)
+    if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT && signum!=X64_SIGQUIT)
         ret = sigaction(signal_from_x64(signum), act?&newact:NULL, oldact?&old:NULL);
     if(oldact) {
         oldact->sa_flags = old.sa_flags;
@@ -1382,6 +1388,9 @@ int EXPORT my_syscall_rt_sigaction(x64emu_t* emu, int signum, const x64_sigactio
     }
 
     if(signum==X64_SIGSEGV && emu->context->no_sigsegv)
+        return 0;
+
+    if(signum==X64_SIGQUIT && emu->context->no_sigquit)
         return 0;
     // TODO, how to handle sigsetsize>4?!
     if(signum==32 || signum==33) {
@@ -1462,7 +1471,7 @@ int EXPORT my_syscall_rt_sigaction(x64emu_t* emu, int signum, const x64_sigactio
         }
         int ret = 0;
 
-        if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT)
+        if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT && signum!=X64_SIGQUIT)
             ret = sigaction(signal_from_x64(signum), act?&newact:NULL, oldact?&old:NULL);
         if(oldact && ret==0) {
             oldact->sa_flags = old.sa_flags;
@@ -1703,6 +1712,9 @@ void init_signal_helper(box64context_t* context)
     action.sa_flags = SA_SIGINFO | SA_RESTART | SA_NODEFER;
     action.sa_sigaction = my_box64signalhandler;
     sigaction(SIGABRT, &action, NULL);
+    action.sa_flags = SA_SIGINFO | SA_RESTART | SA_NODEFER;
+    action.sa_sigaction = my_box64signalhandler;
+    sigaction(SIGQUIT, &action, NULL);
 
     pthread_once(&sigstack_key_once, sigstack_key_alloc);
 #ifdef USE_SIGNAL_MUTEX
@@ -1717,6 +1729,7 @@ void fini_signal_helper()
     signal(SIGBUS, SIG_DFL);
     signal(SIGILL, SIG_DFL);
     signal(SIGABRT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
 }
 
 #ifdef NEED_SIG_CONV

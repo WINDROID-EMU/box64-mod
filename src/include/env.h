@@ -116,6 +116,7 @@ extern char* ftrace_name;
     BOOLEAN(BOX64_NOSANDBOX, nosandbox, 0, 0)                                 \
     BOOLEAN(BOX64_NOSIGSEGV, nosigsegv, 0, 0)                                 \
     BOOLEAN(BOX64_NOSIGILL, nosigill, 0, 0)                                   \
+    BOOLEAN(BOX64_NOSIGQUIT, nosigquit, 0, 0)                                   \
     BOOLEAN(BOX64_NOVULKAN, novulkan, 0, 0)                                   \
     STRING(BOX64_PATH, path, 0)                                               \
     BOOLEAN(BOX64_PCLMULQDQ, pclmulqdq, 1, 1)                                 \

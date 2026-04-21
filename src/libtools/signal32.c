@@ -852,6 +852,9 @@ EXPORT int my32_sigaction(x64emu_t* emu, int signum, const i386_sigaction_t *act
 
     if(signum==X64_SIGILL && emu->context->no_sigill)
         return 0;
+
+    if(signum==X64_SIGQUIT && emu->context->no_sigquit)
+        return 0;
     struct sigaction newact = {0};
     struct sigaction old = {0};
     uintptr_t old_handler = my_context->signals[signum];
@@ -878,7 +881,7 @@ EXPORT int my32_sigaction(x64emu_t* emu, int signum, const i386_sigaction_t *act
         my_context->onstack[signum] = (act->sa_flags&SA_ONSTACK)?1:0;
     }
     int ret = 0;
-    if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT)
+    if(signum!=X64_SIGSEGV && signum!=X64_SIGBUS && signum!=X64_SIGILL && signum!=X64_SIGABRT && signum!=X64_SIGQUIT)
         ret = sigaction(signal_from_x64(signum), act?&newact:NULL, oldact?&old:NULL);
     if(oldact) {
         oldact->sa_flags = old.sa_flags;

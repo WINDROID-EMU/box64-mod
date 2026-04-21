@@ -2249,14 +2249,7 @@ void CreateCpuCacheSize(int fd, int cpu, int index)
     (void)dummy;
 }
 
-#ifdef ANDROID
-static int shm_open(const char *name, int oflag, mode_t mode) {
-    return -1;
-}
-static int shm_unlink(const char *name) {
-    return -1;
-}
-#endif
+// shm_open and shm_unlink are provided by Android sys/mman.h
 
 #define TMP_CPUINFO "box64_tmpcpuinfo"
 #define TMP_CPUTOPO "box64_tmpcputopo%d"
