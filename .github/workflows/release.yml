@@ -37,63 +37,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [X64, RISCV, RK3588, ARM64, ANDROID, TERMUX, LARCH64, PPC64LE, ANDROID_GLIBC, WOW64]
+        platform: [ANDROID]
         type: [Release, Trace, StaticBuild, Box32]
         exclude:
           - platform: ANDROID
             type: StaticBuild
-          - platform: TERMUX
-            type: StaticBuild
-          - platform: X64
-            type: StaticBuild
           - platform: ANDROID
             type: Box32
-          - platform: TERMUX
-            type: Box32
-          - platform: WOW64
-            type: Trace
-          - platform: WOW64
-            type: StaticBuild
-          - platform: WOW64
-            type: Box32
           - platform: ANDROID
-            type: Trace
-          - platform: TERMUX
-            type: Trace
-          - platform: LARCH64
-            type: Trace
-          - platform: PPC64LE
             type: Trace
         include:
-          - platform: X64
-            os: ubuntu-latest
-
-          - platform: RISCV
-            os: ubuntu-latest
-
-          - platform: RK3588
-            os: ubuntu-22.04-arm
-
-          - platform: ARM64
-            os: ubuntu-22.04-arm
-
           - platform: ANDROID
             os: ubuntu-latest
-
-          - platform: TERMUX
-            os: ubuntu-latest
-
-          - platform: LARCH64
-            os: ubuntu-latest
-
-          - platform: PPC64LE
-            os: ubuntu-latest
-
-          - platform: ANDROID_GLIBC
-            os: ubuntu-22.04-arm
-
-          - platform: WOW64
-            os: ubuntu-22.04-arm
 
     runs-on: ${{ matrix.os }}
     container:
