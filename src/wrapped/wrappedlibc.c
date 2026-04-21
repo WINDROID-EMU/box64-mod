@@ -97,6 +97,21 @@ extern int _nl_msg_cat_cntr __attribute__((weak));
 #define LOG_DEBUG 2
 #endif
 
+// Android Bionic doesn't implement shm_open/shm_unlink
+#ifdef ANDROID
+#include <errno.h>
+static inline int shm_open(const char *name, int oflag, mode_t mode) {
+    (void)name; (void)oflag; (void)mode;
+    errno = ENOSYS;
+    return -1;
+}
+static inline int shm_unlink(const char *name) {
+    (void)name;
+    errno = ENOSYS;
+    return -1;
+}
+#endif
+
 
 #define LIBNAME libc
 const char* libcName = "libc.so.6";

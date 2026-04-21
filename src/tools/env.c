@@ -1,3 +1,6 @@
+#ifdef ANDROID
+#define _GNU_SOURCE
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +9,23 @@
 #include <string.h>
 #include <inttypes.h>
 #include <strings.h>
+#ifdef ANDROID
+#include <sys/mman.h>
+#include <unistd.h>
+#include <errno.h>
+// Android Bionic doesn't implement shm_open/shm_unlink
+// Provide stub implementations
+static inline int shm_open(const char *name, int oflag, mode_t mode) {
+    (void)name; (void)oflag; (void)mode;
+    errno = ENOSYS;
+    return -1;
+}
+static inline int shm_unlink(const char *name) {
+    (void)name;
+    errno = ENOSYS;
+    return -1;
+}
+#endif
 #if defined(DYNAREC) && !defined(WIN32)
 #include <sys/types.h>
 #include <dirent.h>
@@ -378,11 +398,6 @@ static void pushNewEntry(const char* name, box64env_t* env, int wildcard)
         memcpy(p, env, sizeof(box64env_t));
     }
 }
-
-#ifdef ANDROID
-// shm_open and shm_unlink are provided by Android headers
-#include <sys/mman.h>
-#endif
 
 static void initializeEnvFile(const char* filename, int priority)
 {
