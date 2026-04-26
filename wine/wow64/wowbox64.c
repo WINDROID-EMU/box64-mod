@@ -307,6 +307,11 @@ static uint8_t box64_is_addr_in_jit(void* addr)
 
 NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs)
 {
+    printf_log(LOG_INFO, "[BTCpuResetToConsistentState] CALLED with ptrs=%p\n", ptrs);
+    if (!ptrs) {
+        printf_log(LOG_INFO, "[BTCpuResetToConsistentState] ERROR: ptrs is NULL\n");
+        return STATUS_INVALID_PARAMETER;
+    }
     printf_log(LOG_DEBUG, "BTCpuResetToConsistentState(%p)\n", ptrs);
     x64emu_t* emu = NtCurrentTeb()->TlsSlots[WOW64_TLS_EMU];
     EXCEPTION_RECORD* rec = ptrs->ExceptionRecord;
@@ -317,7 +322,13 @@ NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs)
         void* addr = NULL;
         uint32_t prot;
 
-        if (rec->NumberParameters == 2 && rec->ExceptionInformation[0] == 1)
+        /* ExceptionInformation[0] can be:
+         * 0 = read, 1 = write, 8 = execute.
+         * We need the faulting address for all AV types, not only writes,
+         * otherwise execute faults in 32-bit wow64 paths (kernel32) bypass
+         * the lazy recovery path and end up as c0000005.
+         */
+        if (rec->NumberParameters >= 2)
             addr = ULongToPtr(rec->ExceptionInformation[1]);
 
         if (addr) {
