@@ -256,6 +256,14 @@ NTSTATUS WINAPI BTCpuProcessInit(void)
         printf_log(LOG_INFO, "Minimum CPU requirements not met, disabling DynaRec\n");
         SET_BOX64ENV(dynarec, 0);
     }
+    /* Stability first for Wine WOW64 (32-bit on 64-bit): some titles hit
+     * repeatable AV in i386 kernel32 when resuming through dynarec signal
+     * paths. Force interpreter mode for this wow64 DLL instance.
+     */
+    if (BOX64ENV(dynarec)) {
+        printf_log(LOG_INFO, "[WOW64] Disabling dynarec for improved 32-bit stability\n");
+        SET_BOX64ENV(dynarec, 0);
+    }
 
     TCHAR filename[MAX_PATH];
     if (GetModuleFileNameA(NULL, filename, MAX_PATH)) {
