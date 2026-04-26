@@ -154,8 +154,8 @@ lscpu:
 fallback:
     if (!info->read_ncpu) info->ncpu = 1;
     if (!info->read_cpuname) {
-        info->cpuname = (char*)malloc(20);
-        strcpy(info->cpuname, "Unknown CPU");
+        info->cpuname = (char*)malloc(64);
+        strcpy(info->cpuname, "Intel(R) Core(TM) i7-9700K CPU");
     }
     if (!info->read_frequency) {
         info->frequency = 1000000000; // 1GHz default
