@@ -4,6 +4,7 @@
  */
 #include <stddef.h>
 #include <stdio.h>
+#include <errno.h>
 #include <windows.h>
 #include <ntstatus.h>
 #include <winternl.h>
@@ -320,6 +321,21 @@ NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs)
             addr = ULongToPtr(rec->ExceptionInformation[1]);
 
         if (addr) {
+            // Lazy-DEP: Check if this is execution fault on RW page (DEP/CEG DRM)
+            prot = getProtection((uintptr_t)addr);
+            printf_log(LOG_INFO, "[WOW64] EXCEPTION_ACCESS_VIOLATION at %p, prot=0x%x\n", addr, prot);
+            if ((prot & ~PROT_CUSTOM) == (PROT_READ | PROT_WRITE)) {
+                // DEP/CEG case: Grant PROT_EXEC to allow code execution
+                uintptr_t page_addr = ((uintptr_t)addr) & ~(box64_pagesize - 1);
+                printf_log(LOG_INFO, "[WOW64] Lazy-DEP: Granting PROT_EXEC to page %p for DEP/CEG\n", (void*)page_addr);
+                if (mprotect((void*)page_addr, box64_pagesize, PROT_READ | PROT_WRITE | PROT_EXEC) == 0) {
+                    printf_log(LOG_INFO, "[WOW64] Lazy-DEP: Successfully granted PROT_EXEC, continuing\n");
+                    NtContinue(ctx, FALSE);
+                    return STATUS_SUCCESS;
+                } else {
+                    printf_log(LOG_INFO, "[WOW64] Lazy-DEP: mprotect failed, errno=%d\n", errno);
+                }
+            }
             unprotectDB((uintptr_t)addr, 1, 1); // unprotect 1 byte... But then, the whole page will be unprotected
             NtContinue(ctx, FALSE);
         }
