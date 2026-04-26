@@ -965,6 +965,16 @@ int initialize(int argc, const char **argv, char** env, x64emu_t** emulator, elf
             }
         }
         if (box64_wine_guest_name) printf_log(LOG_INFO, "Detected running wine with \"%s\"\n", box64_wine_guest_name);
+#ifdef ANDROID
+        /* On Android/Bionic, Wine WOW64 32-bit guest paths can crash with
+         * repeatable c0000005 in i386 kernel32 when running under dynarec.
+         * Force interpreter for Wine guest executables to prioritize stability.
+         */
+        if (box64_wine_guest_name && strstr(box64_wine_guest_name, ".exe") && BOX64ENV(dynarec)) {
+            printf_log(LOG_INFO, "[WINE][ANDROID] Disabling dynarec for guest \"%s\" to avoid WOW64 c0000005\n", box64_wine_guest_name);
+            SET_BOX64ENV(dynarec, 0);
+        }
+#endif
     } else if(strstr(prog, "ld-musl-x86_64.so.1")) {
     // check if ld-musl-x86_64.so.1 is used
         printf_log(LOG_INFO, "ld-musl detected. Trying to workaround and use system ld-linux\n");
