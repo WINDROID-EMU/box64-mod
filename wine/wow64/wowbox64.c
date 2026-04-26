@@ -406,10 +406,16 @@ void EmitInterruptionImpl(x64emu_t* emu, int code)
         int id = R_EAX;
         BOOL is_unix_call = FALSE;
 
+        printf_log(LOG_DEBUG, "[WOW64] Syscall detected: id=%d (0x%x), RIP=0x%llx, RSP=0x%llx\n", id, id, (unsigned long long)R_RIP, (unsigned long long)R_RSP);
+
         if (ULongToPtr(R_RIP) == &unxcode)
             is_unix_call = TRUE;
-        else if (ULongToPtr(R_RIP) != &bopcode)
+        else if (ULongToPtr(R_RIP) != &bopcode) {
+            printf_log(LOG_DEBUG, "[WOW64] Unknown RIP, returning: RIP=0x%llx, bopcode=%p, unxcode=%p\n", (unsigned long long)R_RIP, bopcode, unxcode);
             return;
+        }
+
+        printf_log(LOG_DEBUG, "[WOW64] Before Pop32: RIP=0x%llx, ESP=0x%x\n", (unsigned long long)R_RIP, R_ESP);
 
         R_RIP = Pop32(emu);
         ctx->Eip = R_RIP;

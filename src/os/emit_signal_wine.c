@@ -4,6 +4,7 @@
  */
 #include <windows.h>
 #include <winternl.h>
+#include <stdint.h>
 
 #include "x64_signals.h"
 #include "x64emu.h"
@@ -21,7 +22,19 @@ void EmitSignal(x64emu_t* emu, int sig, void* addr, int code)
             rec.ExceptionCode = STATUS_ILLEGAL_INSTRUCTION;
             break;
         case X64_SIGSEGV:
-            printf_log(LOG_DEBUG, "SIGSEGV at %p with code %d\n", addr, code);
+            printf_log(LOG_INFO, "[SIGSEGV] Signal at addr=%p, code=%d, RIP=0x%llx, RSP=0x%llx\n",
+                addr, code,
+                emu ? (unsigned long long)R_RIP : 0,
+                emu ? (unsigned long long)R_RSP : 0);
+            if (emu) {
+                printf_log(LOG_INFO, "[SIGSEGV] Registers: RAX=0x%llx, RBX=0x%llx, RCX=0x%llx, RDX=0x%llx\n",
+                    (unsigned long long)R_RAX, (unsigned long long)R_RBX,
+                    (unsigned long long)R_RCX, (unsigned long long)R_RDX);
+                printf_log(LOG_INFO, "[SIGSEGV] Stack: RSP=0x%llx, [RSP]=0x%llx, [RSP+8]=0x%llx\n",
+                    (unsigned long long)R_RSP,
+                    (unsigned long long)(R_RSP ? *(uint64_t*)R_RSP : 0),
+                    (unsigned long long)(R_RSP ? *(uint64_t*)(R_RSP+8) : 0));
+            }
             rec.ExceptionCode = STATUS_ACCESS_VIOLATION;
             break;
         default:
