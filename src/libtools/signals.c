@@ -1013,13 +1013,16 @@ dynarec_log(/*LOG_DEBUG*/LOG_INFO, "%04d|Repeated SIGSEGV with Access error on %
         printf_log(LOG_INFO, "Sigfault/Segbus while quitting, exiting silently\n");
         _exit(box64_exit_code);    // Hack, segfault while quiting, exit silently
     }
+    // Debug: Log all signals to understand what's happening with Black Ops 2
+    const char* signame = (sig==X64_SIGSEGV)?"SIGSEGV":((sig==X64_SIGBUS)?"SIGBUS":((sig==X64_SIGILL)?"SIGILL":((sig==6)?"SIGABRT":((sig==17)?"SIGCHLD":"OTHER"))));
+    printf_log(LOG_INFO, "%04d| SIGNAL DEBUG: sig=%d (%s), addr=%p, pc=%p, prot=0x%x\n", tid, sig, signame, addr, pc, prot);
+
     static int old_code = -1;
     static void* old_pc = 0;
     static void* old_addr = 0;
     static int old_tid = 0;
     static uint32_t old_prot = 0;
     int mapped = memExist((uintptr_t)addr);
-    const char* signame = (sig==X64_SIGSEGV)?"SIGSEGV":((sig==X64_SIGBUS)?"SIGBUS":((sig==X64_SIGILL)?"SIGILL":"SIGABRT"));
     rsp = (void*)R_RSP;
 #if defined(DYNAREC)
     if(db && CONTEXT_REG(p, xEmu)>0x10000) {
