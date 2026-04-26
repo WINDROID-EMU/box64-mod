@@ -33,7 +33,13 @@ void my_cpuid(x64emu_t* emu)
     }
     static char branding[3*4*4+1] = "";
     if(!branding[0]) {
-        strncpy(branding, box64_sysinfo.box64_cpuname, 3*4*4);
+        const char* detected = box64_sysinfo.box64_cpuname;
+        const char* desktop_brand = "Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz";
+        // Use a realistic desktop brand string when running generic/unknown CPUs
+        if(strstr(detected, "Unknown CPU") || strstr(detected, "Box64") || strstr(detected, "Cortex") || strstr(detected, "ARM"))
+            strncpy(branding, desktop_brand, 3*4*4);
+        else
+            strncpy(branding, detected, 3*4*4);
         while(strlen(branding)<3*4*4) {
             memmove(branding+1, branding, strlen(branding)+1);
             branding[0] = ' ';
@@ -108,7 +114,7 @@ void my_cpuid(x64emu_t* emu)
                     | 1<<24     // fxsr (fxsave, fxrestore)
                     | 1<<25     // SSE
                     | 1<<26     // SSE2
-                    //| (BOX64ENV(cputype)?0:1)<<28     // HTT / Multi-core
+                    | ((ncpu>1 && !BOX64ENV(cputype))?1:0)<<28     // HTT / Multi-core
                     ;
             R_RCX =   1<<0      // SSE3
                     | BOX64ENV(pclmulqdq)<<1      // PCLMULQDQ
@@ -233,17 +239,37 @@ void my_cpuid(x64emu_t* emu)
                 // reserved
                 R_RAX = R_RBX = R_RCX = R_RDX = 0 ;
             } else {
-                // Extended Topology Enumeration Leaf
-                R_RAX = 0;
-                R_RBX = (subleaf==0)?1:((subleaf==1)?ncpu:0);
-                R_RCX |= (subleaf==0)?0x100:((subleaf==1)?0x200:0);
-                #ifdef WIN32
+                // Extended Topology Enumeration Leaf (Intel)
                 int cpu = 0;
-                #else
-                int cpu = sched_getcpu();
+                #ifndef WIN32
+                cpu = sched_getcpu();
                 if(cpu<0) cpu=0;
                 #endif
-                R_RDX = cpu;
+                switch(subleaf) {
+                    case 0: // SMT level
+                        R_RAX = 0;           // 0 bits shift (1 thread per core)
+                        R_RBX = 1;           // 1 logical processor at this level
+                        R_RCX = 0x100;       // level 0, type 1 (SMT)
+                        R_RDX = cpu;         // x2APIC ID
+                        break;
+                    case 1: // Core level
+                        {
+                            int shift = 0;
+                            int cores = ncpu;
+                            while(cores > 1) { cores >>= 1; ++shift; }
+                            R_RAX = shift;       // bits to shift for package ID
+                            R_RBX = ncpu;        // ncpu logical processors at core level
+                            R_RCX = 0x201;       // level 1, type 2 (Core)
+                            R_RDX = cpu;         // x2APIC ID
+                        }
+                        break;
+                    default:
+                        R_RAX = 0;
+                        R_RBX = 0;
+                        R_RCX = 0;           // type 0 = invalid, terminates enumeration
+                        R_RDX = 0;
+                        break;
+                }
             }
             break;
         case 0xC:
@@ -521,7 +547,7 @@ void my_cpuid(x64emu_t* emu)
                 R_RDX = 0;
             } else {
                 // ?
-                R_RAX = 0x0000302e;//?
+                R_RAX = 0x00003030;  // 48-bit physical, 48-bit linear address (Intel desktop)
                 R_RBX = 0;
                 R_RCX = 0;
                 R_RDX = 0;
