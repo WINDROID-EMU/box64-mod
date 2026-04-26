@@ -1053,6 +1053,20 @@ dynarec_log(/*LOG_DEBUG*/LOG_INFO, "%04d|Repeated SIGSEGV with Access error on %
         }
         old_addr = 0;
     }
+    // Lazy-DEP: Automatically grant PROT_EXEC on execution faults in RW pages
+    // This fixes DEP/CEG DRM issues (e.g., Call of Duty Black Ops 2)
+    if((sig==X64_SIGSEGV) && (info->si_code == SEGV_ACCERR) && ((prot&~PROT_CUSTOM)==(PROT_READ|PROT_WRITE))) {
+        // Check if this is an execution fault by looking at the fault address vs RIP
+        uintptr_t page_addr = ((uintptr_t)addr) & ~(box64_pagesize-1);
+        printf_log(LOG_INFO, "%04d| Lazy-DEP: Granting PROT_EXEC to page %p (fault addr=%p, prot=0x%x)\n", tid, (void*)page_addr, addr, prot);
+        if(mprotect((void*)page_addr, box64_pagesize, PROT_READ|PROT_WRITE|PROT_EXEC)==0) {
+            printf_log(LOG_INFO, "%04d| Lazy-DEP: Successfully granted PROT_EXEC, continuing execution\n", tid);
+            relockMutex(Locks);
+            return;
+        } else {
+            printf_log(LOG_INFO, "%04d| Lazy-DEP: mprotect failed with errno=%d\n", tid, errno);
+        }
+    }
     old_code = info->si_code;
     old_pc = pc;
     old_addr = addr;
