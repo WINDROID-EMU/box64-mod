@@ -1055,6 +1055,7 @@ dynarec_log(/*LOG_DEBUG*/LOG_INFO, "%04d|Repeated SIGSEGV with Access error on %
     }
     // Lazy-DEP: Automatically grant PROT_EXEC on execution faults in RW pages
     // This fixes DEP/CEG DRM issues (e.g., Call of Duty Black Ops 2)
+    printf_log(LOG_INFO, "%04d| Lazy-DEP DEBUG: sig=%d, si_code=%d, prot=0x%x, SEGV_ACCERR=%d, condition=%d\n", tid, sig, info->si_code, prot, SEGV_ACCERR, ((sig==X64_SIGSEGV) && (info->si_code == SEGV_ACCERR) && ((prot&~PROT_CUSTOM)==(PROT_READ|PROT_WRITE))));
     if((sig==X64_SIGSEGV) && (info->si_code == SEGV_ACCERR) && ((prot&~PROT_CUSTOM)==(PROT_READ|PROT_WRITE))) {
         // Check if this is an execution fault by looking at the fault address vs RIP
         uintptr_t page_addr = ((uintptr_t)addr) & ~(box64_pagesize-1);
