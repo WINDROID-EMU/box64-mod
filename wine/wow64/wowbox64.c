@@ -73,6 +73,9 @@ static const UINT_PTR page_mask = 0xfff;
 #define WOW64_TLS_ENTRY_CONTEXT (WOW64_TLS_MAX_NUMBER - 1)
 #define WOW64_TLS_EMU           (WOW64_TLS_MAX_NUMBER - 2)
 
+/* Stable per-thread host context for wow64 signal/unwind paths. */
+static __thread CONTEXT wow64_entry_context_tls;
+
 int is_addr_unaligned(uintptr_t addr)
 {
     // FIXME
@@ -324,6 +327,12 @@ NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs)
     x64emu_t* emu = NtCurrentTeb()->TlsSlots[WOW64_TLS_EMU];
     EXCEPTION_RECORD* rec = ptrs->ExceptionRecord;
     CONTEXT* ctx = ptrs->ContextRecord;
+    CONTEXT* entry_ctx = NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT];
+
+    if (!rec || !ctx) {
+        printf_log(LOG_INFO, "[BTCpuResetToConsistentState] ERROR: invalid exception pointers rec=%p ctx=%p\n", rec, ctx);
+        return STATUS_INVALID_PARAMETER;
+    }
 
     if (rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
         dynablock_t* db = NULL;
@@ -364,7 +373,13 @@ NTSTATUS WINAPI BTCpuResetToConsistentState(EXCEPTION_POINTERS* ptrs)
         return STATUS_SUCCESS;
 
     /* Replace the host context with one captured before JIT entry so host code can unwind */
-    memcpy(ctx, NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT], sizeof(*ctx));
+    if (!entry_ctx) {
+        printf_log(LOG_INFO, "[BTCpuResetToConsistentState] Missing WOW64 entry context, capturing fallback\n");
+        RtlCaptureContext(&wow64_entry_context_tls);
+        entry_ctx = &wow64_entry_context_tls;
+        NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT] = entry_ctx;
+    }
+    memcpy(ctx, entry_ctx, sizeof(*ctx));
     return STATUS_SUCCESS;
 }
 
@@ -380,10 +395,9 @@ void WINAPI BTCpuSimulate(void)
     WOW64_CPURESERVED* cpu = NtCurrentTeb()->TlsSlots[WOW64_TLS_CPURESERVED];
     x64emu_t* emu = NtCurrentTeb()->TlsSlots[WOW64_TLS_EMU];
     WOW64_CONTEXT* ctx = (WOW64_CONTEXT*)(cpu + 1);
-    CONTEXT entry_context;
 
-    RtlCaptureContext(&entry_context);
-    NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT] = &entry_context;
+    RtlCaptureContext(&wow64_entry_context_tls);
+    NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT] = &wow64_entry_context_tls;
 
     R_EAX = ctx->Eax;
     R_EBX = ctx->Ebx;
@@ -516,6 +530,12 @@ static void __attribute__((naked)) SEHFrameTrampoline2Args(void* Arg0, int Arg1,
 void EmitInterruption(x64emu_t* emu, int num, void* addr)
 {
     CONTEXT* entry_context = NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT];
+    if (!entry_context) {
+        printf_log(LOG_INFO, "[WOW64] Missing entry context in EmitInterruption, capturing fallback\n");
+        RtlCaptureContext(&wow64_entry_context_tls);
+        entry_context = &wow64_entry_context_tls;
+        NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT] = entry_context;
+    }
     SEHFrameTrampoline2Args(emu, num, (void*)EmitInterruptionImpl, entry_context->Sp, entry_context->Pc);
     NtCurrentTeb()->TlsSlots[WOW64_TLS_ENTRY_CONTEXT] = entry_context;
 }
