@@ -9,7 +9,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <strings.h>
-#ifdef ANDROID
+#if defined(ANDROID) && !defined(__GLIBC__)
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>

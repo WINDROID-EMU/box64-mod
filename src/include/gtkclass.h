@@ -2527,7 +2527,7 @@ GTKCLASS(GstBufferPool)             \
 GTKCLASS(GstVideoBufferPool)        \
 GTKIFACE(GstURIHandler)             \
 GTKIFACE(GInitable)                 \
-GTKIFACE(GAsyncInitable)            \
+GTKIFACE(GAsyncInitable)
 
 #define GTKCLASS(A) void Set##A##ID(size_t id);
 #define GTKIFACE(A) GTKCLASS(A)

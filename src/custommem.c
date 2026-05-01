@@ -3002,7 +3002,7 @@ void reverveHigMem32(void)
 void my_reserveHighMem()
 {
     static int reserved = 0;
-    if(reserved || (!have48bits && !box64_is32bits))
+    if(reserved)
         return;
     reserved = 1;
     #ifdef BOX32
@@ -3011,7 +3011,7 @@ void my_reserveHighMem()
         return;
     }
     #endif
-    uintptr_t cur = box64_is32bits?(1ULL<<32):(1ULL<<47);
+    uintptr_t cur = box64_is32bits?(1ULL<<32):(have48bits?(1ULL<<47):(1ULL<<39));
     uintptr_t bend = 0;
     uint32_t prot;
     while (bend!=0xffffffffffffffffLL) {

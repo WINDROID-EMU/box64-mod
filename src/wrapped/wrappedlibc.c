@@ -50,6 +50,21 @@ extern int _nl_msg_cat_cntr __attribute__((weak));
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+
+/* union semun is defined by the user according to the man page of semctl */
+#ifndef __union_semun_defined
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+    struct seminfo *__buf;
+};
+#define __union_semun_defined
+#endif
+
+#if defined(ANDROID) && !defined(__GLIBC__)
+/* Fallback for Android Bionic which might miss these */
+#endif
 #include <setjmp.h>
 #include <sys/vfs.h>
 #include <spawn.h>
@@ -98,7 +113,7 @@ extern int _nl_msg_cat_cntr __attribute__((weak));
 #endif
 
 // Android Bionic doesn't implement shm_open/shm_unlink
-#ifdef ANDROID
+#if defined(ANDROID) && !defined(__GLIBC__)
 #include <errno.h>
 static inline int shm_open(const char *name, int oflag, mode_t mode) {
     (void)name; (void)oflag; (void)mode;
@@ -1815,7 +1830,7 @@ EXPORT int my_statfs64(const char* path, void* buf)
 }
 #endif
 
-#ifdef ANDROID
+#if defined(ANDROID) && !defined(__GLIBC__)
 typedef int (*__compar_d_fn_t)(const void*, const void*, void*);
 
 static size_t qsort_r_partition(void* base, size_t size, __compar_d_fn_t compar, void* arg, size_t lo, size_t hi)
