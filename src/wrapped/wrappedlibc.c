@@ -52,7 +52,7 @@ extern int _nl_msg_cat_cntr __attribute__((weak));
 #include <sys/sem.h>
 
 /* union semun is defined by the user according to the man page of semctl */
-#ifndef __union_semun_defined
+#if !defined(__union_semun_defined) && !defined(_SEM_SEMUN_UNDEFINED) && !defined(ANDROID)
 union semun {
     int val;
     struct semid_ds *buf;
@@ -1889,13 +1889,13 @@ EXPORT void my_qsort(x64emu_t* emu, void* base, size_t nmemb, size_t size, void*
 {
     compare_r_t args;
     args.emu = emu; args.f = (uintptr_t)fnc; args.r = 0; args.data = NULL;
-    qsort_r(base, nmemb, size, (__compar_d_fn_t)my_compare_r_cb, &args);
+    qsort_r(base, nmemb, size, (box64_compar_d_fn_t)my_compare_r_cb, &args);
 }
 EXPORT void my_qsort_r(x64emu_t* emu, void* base, size_t nmemb, size_t size, void* fnc, void* data)
 {
     compare_r_t args;
     args.emu = emu; args.f = (uintptr_t)fnc; args.r = 1; args.data = data;
-    qsort_r(base, nmemb, size, (__compar_d_fn_t)my_compare_r_cb, &args);
+    qsort_r(base, nmemb, size, (box64_compar_d_fn_t)my_compare_r_cb, &args);
 }
 EXPORT void* my_bsearch(x64emu_t* emu, void* key, void* base, size_t nmemb, size_t size, void* fnc)
 {

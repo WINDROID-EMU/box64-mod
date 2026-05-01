@@ -2731,7 +2731,7 @@ void loadProtectionFromMap()
             prev = e;
             int prot = ((r=='r')?PROT_READ:0)|((w=='w')?PROT_WRITE:0)|((x=='x')?PROT_EXEC:0);
             allocProtection(s, e-s, prot);
-            if(!pbrk && strstr(buf, "[heap]"))
+            if(!pbrk && (strstr(buf, "[heap]") || strstr(buf, "[anon:libc_malloc]") || strstr(buf, "[anon:scudo:") || strstr(buf, "[anon:scudo:primary]")))
                 pbrk = s;
             if(s>0x7fff00000000LL)
                 have48bits = 1;
@@ -2748,7 +2748,7 @@ void loadProtectionFromMap()
     if(!pbrk) {
         if (!box64_unittest_mode)
             printf_log(LOG_INFO, "Warning, program break not found\n");
-        if(cur_brk) pbrk = *cur_brk;    // approximate is better than nothing
+        if(cur_brk && *cur_brk) pbrk = *cur_brk;    // approximate is better than nothing
     }
     fclose(f);
     box64_mapclean = 1;
