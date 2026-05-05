@@ -806,7 +806,7 @@ void* map64_customMalloc(size_t size, int is32bits)
         map[idx >> 4] |= 1u << (idx & 15);
     }
 
-    if (is32bits && p > (void*)0xffffffffLL) {
+    if (is32bits && ((uintptr_t)p + allocsize > 0x100000000ULL)) {
         p_blocks[i].maxfree = allocsize - mapsize;
         p_blocks[i].is32bits = 0;
         errno = ENOMEM;
